@@ -5,7 +5,6 @@ import (
     "log"
     "os"
     "syscall"
-    "time"
 
     "github.com/sevlyar/go-daemon"
 )
@@ -63,38 +62,13 @@ func main() {
 }
 
 var (
-    stop = make(chan struct{})
+    interrupt = make(chan struct{})
     done = make(chan struct{})
 )
 
-func stopped() bool {
-    select {
-    case <- stop:
-        return true
-    default:
-        return false
-    }
-}
-func worker() {
-    for {
-        // TBD
-        // do something
-        time.Sleep(time.Second)
-        log.Println("111")
-
-        if stopped() {
-            break
-        }
-    }
-
-    // TBD
-    // do something before stop
-    done <- struct{}{}
-}
-
 func termHandler(sig os.Signal) error {
     log.Println("Terminating...")
-    stop <- struct{}{}
+    interrupt <- struct{}{}
     <-done
     return daemon.ErrStop
 }
