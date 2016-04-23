@@ -1,6 +1,8 @@
 package main
 
 import (
+    "encoding/json"
+    "fmt"
     "io/ioutil"
 	"log"
     "net/http"
@@ -22,15 +24,32 @@ var (
     connected = make(chan struct{})
 )
 
-func getAuth() string {
-    // TBD "key,uuid"
-    return ""
+func getAuth() (string, bool) {
+    path := "/etc/moon/key.cfg"
+    bytes, err := ioutil.ReadFile(path)
+    if err != nil {
+        log.Printf("Error: read file %s, %v\n", path, err)
+        return "", false
+    }
+
+    conf := struct {
+        Key  string `json:"key"`
+        Uuid string `json:"uuid"`
+    } {}
+
+    err = json.Unmarshal(bytes, &conf)
+    if err != nil {
+        log.Printf("Error: parse key, %v\n", err)
+        return "", false
+    }
+
+    return fmt.Sprintf("%s,%s", conf.Key, conf.Uuid), true
 }
 
-func dail() {
+func dail(auth string) {
     u := url.URL{Scheme: "ws", Host: "localhost", Path: "/api/v1/agent"}
     header := make(http.Header)
-    header.Set("Moon-Authentication", getAuth())
+    header.Set("Moon-Authentication", auth)
 
     for {
         log.Printf("Trying to connect %s\n", u.String())
@@ -60,17 +79,30 @@ func process() {
             conn.Close()
             reconnect <- struct{}{}
             <- connected
+            continue
         }
 
         log.Printf("Recv message of type %s\n", message.Type)
-        // TBD
-        // go do()
-        // content, ok := message.Content.(string)
+        job, err := createJob(message)
+        if err != nil {
+            log.Printf("Error: create job, %v\n", err)
+            continue
+        }
+
+        result := job.Run()
+        if err := conn.WriteJSON(result); err != nil {
+            log.Printf("Error: write message, %v\n", err)
+        }
     }
 }
 
 func worker() {
-    go dail()
+    auth, ok := getAuth()
+    if !ok {
+        log.Fatalf("Error: missing authentication key\n")
+    }
+
+    go dail(auth)
     go process()
 
 	<- interrupt
