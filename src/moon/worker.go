@@ -4,12 +4,12 @@ import (
     "encoding/json"
     "fmt"
     "io/ioutil"
-	"log"
+    "log"
     "net/http"
-	"net/url"
-	"time"
+    "net/url"
+    "time"
 
-	"github.com/gorilla/websocket"
+    "github.com/gorilla/websocket"
 )
 
 type Message struct {
@@ -105,7 +105,7 @@ func worker() {
     go dail(auth)
     go process()
 
-	<- interrupt
+    <- interrupt
     // TBD
-	done <- struct{}{}
+    done <- struct{}{}
 }
