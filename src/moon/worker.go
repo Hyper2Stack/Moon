@@ -47,7 +47,7 @@ func getAuth() (string, bool) {
 }
 
 func dail(auth string) {
-    u := url.URL{Scheme: "ws", Host: "localhost", Path: "/api/v1/agent"}
+    u := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/api/v1/agent"}
     header := make(http.Header)
     header.Set("Moon-Authentication", auth)
 
