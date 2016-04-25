@@ -7,15 +7,31 @@ import (
     "log"
     "net/http"
     "net/url"
+    "strings"
     "time"
 
     "github.com/gorilla/websocket"
 )
 
-type Message struct {
-    Type    string      `json:"type"`
-    Content interface{} `json:"content"`
+type Request struct {
+    Action  string
+    Content []byte
 }
+
+type Response struct {
+    Status  string
+    Content []byte
+}
+
+var (
+    ActionNodeInfo      = "get-node-info"
+    ActionAgentInfo     = "get-agent-info"
+    ActionExecShell     = "exec-shell-script"
+    StatusOK            = "ok"
+    StatusBadRequest    = "bad-request"
+    StatusError         = "error"
+    StatusInternalError = "internal-error"
+)
 
 var conn *websocket.Conn = nil
 
@@ -57,8 +73,10 @@ func dail(auth string) {
         c, res, err := websocket.DefaultDialer.Dial(u.String(), header)
         if err != nil {
             log.Printf("Error: websocket dail, %v\n", err)
-            errBody, _ := ioutil.ReadAll(res.Body)
-            log.Printf("Error: websocket body, %s\n", string(errBody))
+            if res != nil {
+                errBody, _ := ioutil.ReadAll(res.Body)
+                log.Printf("Error: websocket body, %s\n", string(errBody))
+            }
             time.Sleep(3 * time.Second)
             continue
         }
@@ -70,11 +88,20 @@ func dail(auth string) {
     }
 }
 
+func decodeRequest(msg []byte) *Request {
+    ss := strings.SplitN(string(msg), "\r\n", 2)
+    return &Request{Action: ss[0], Content: []byte(ss[1])}
+}
+
+func encodeResponse(res *Response) []byte {
+    return []byte(fmt.Sprintf("%s\r\n%s", res.Status, res.Content))
+}
+
 func process() {
     <- connected
     for {
-        message := new(Message)
-        if err := conn.ReadJSON(message); err != nil {
+        _, msg, err := conn.ReadMessage()
+        if err != nil {
             log.Printf("Error: read message, %v\n", err)
             conn.Close()
             reconnect <- struct{}{}
@@ -82,15 +109,20 @@ func process() {
             continue
         }
 
-        log.Printf("Recv message of type %s\n", message.Type)
-        job, err := createJob(message)
+        req := decodeRequest(msg)
+        log.Printf("Recv message of action %s\n", req.Action)
+
+        res := new(Response)
+        job, err := createJob(req)
         if err != nil {
+            res.Status = StatusBadRequest
+            res.Content, _ = json.Marshal(map[string]string{"message": err.Error()})
             log.Printf("Error: create job, %v\n", err)
-            continue
+        } else {
+            res = job.Run()
         }
 
-        result := job.Run()
-        if err := conn.WriteJSON(result); err != nil {
+        if err := conn.WriteMessage(websocket.TextMessage, encodeResponse(res)); err != nil {
             log.Printf("Error: write message, %v\n", err)
         }
     }

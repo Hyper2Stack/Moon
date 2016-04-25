@@ -36,21 +36,21 @@ func generateUuid() string {
 }
 
 func main() {
-    key := *flag.String("key", "", "agent authentication key")
+    key := flag.String("key", "", "agent authentication key")
     flag.Parse()
 
-    if len(key) == 0 {
-        fmt.Printf("Error: invalid key %s\n", key)
+    if len(*key) == 0 {
+        fmt.Printf("Error: invalid key %s\n", *key)
         return
     }
 
     auth := getAuth()
-    if auth != nil && auth.Key == key {
+    if auth != nil && auth.Key == *key {
         return
     }
 
     auth = new(Auth)
-    auth.Key = key
+    auth.Key = *key
     auth.Uuid = generateUuid()
 
     content, _ := json.Marshal(auth)

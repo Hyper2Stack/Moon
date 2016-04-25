@@ -14,5 +14,5 @@ mkdir -p /etc/moon
 mkdir -p /var/run/moon
 mkdir -p /var/log/moon
 
-install ${ROOT_DIR}/moon /usr/sbin/moon
-install ${ROOT_DIR}/moon-config /usr/sbin/moon-config
+install ${ROOT_DIR}/bin/moon /usr/sbin/moon
+install ${ROOT_DIR}/bin/moon-config /usr/sbin/moon-config

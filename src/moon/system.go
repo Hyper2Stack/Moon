@@ -1,6 +1,7 @@
 package main
 
 import (
+    "log"
     "net"
     "os"
     "os/exec"
@@ -58,11 +59,15 @@ func getNodeInfo() *NodeInfo {
 
     // find the interface attached to default gateway
     args := []string{"-c", "ip route get 8.8.8.8 | head -1 | awk '{print $5}'"}
-    if out, err := exec.Command("bash", args...).Output(); err != nil {
-        for _, nic := range info.Nics {
-            if nic.Name == strings.Trim(string(out), "\n") {
-                nic.Tags = append(nic.Tags, "default")
-            }
+    out, err := exec.Command("bash", args...).Output()
+    if err != nil {
+        log.Printf("Error: exec commond, %s %v, %v\n", "bash", args, err)
+        return info
+    }
+
+    for _, nic := range info.Nics {
+        if nic.Name == strings.Trim(string(out), "\n") {
+            nic.Tags = append(nic.Tags, "default")
         }
     }
 
