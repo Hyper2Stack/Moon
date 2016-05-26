@@ -23,7 +23,7 @@ func main() {
     daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, reloadHandler)
 
     cntxt := &daemon.Context{
-        PidFileName: "/var/run/moon/moon.pid",
+        PidFileName: "/var/run/moon.pid",
         PidFilePerm: 0644,
         LogFileName: "/var/log/moon/moon.log",
         LogFilePerm: 0640,
