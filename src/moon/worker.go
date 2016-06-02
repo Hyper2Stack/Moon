@@ -11,6 +11,7 @@ import (
     "time"
 
     "github.com/gorilla/websocket"
+    "moon/cfg"
 )
 
 type Request struct {
@@ -41,21 +42,9 @@ var (
 )
 
 func getAuth() (string, bool) {
-    path := "/etc/moon/key.cfg"
-    bytes, err := ioutil.ReadFile(path)
+    conf, err := cfg.ParseKey(config.KeyFile)
     if err != nil {
-        log.Printf("Error: read file %s, %v\n", path, err)
-        return "", false
-    }
-
-    conf := struct {
-        Key  string `json:"key"`
-        Uuid string `json:"uuid"`
-    } {}
-
-    err = json.Unmarshal(bytes, &conf)
-    if err != nil {
-        log.Printf("Error: parse key, %v\n", err)
+        log.Printf("Error: parse key %s, %v\n", config.KeyFile, err)
         return "", false
     }
 

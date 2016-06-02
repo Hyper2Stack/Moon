@@ -8,7 +8,7 @@ import (
     "syscall"
 
     "github.com/sevlyar/go-daemon"
-    "github.com/shizeeg/gcfg"
+    "moon/cfg"
 )
 
 var (
@@ -16,32 +16,7 @@ var (
     done = make(chan struct{})
 )
 
-var config Config
-
-type Config struct {
-    PidFile string `gcfg:"pid_file"`
-    LogFile string `gcfg:"log_file"`
-}
-
-func parseConfig() {
-    cfg := struct {
-        Moon Config
-    }{}
-
-    err := gcfg.ReadFileInto(&cfg, "/etc/moon/moon.cfg")
-    if err != nil {
-        log.Fatalf("Failed to parse moon.cfg: %s", err)
-    }
-
-    config = cfg.Moon
-    if config.PidFile == "" {
-        config.PidFile = "/var/run/moon.pid"
-    }
-
-    if config.LogFile == "" {
-        config.LogFile = "/var/log/moon/moon.log"
-    }
-}
+var config *cfg.Cfg
 
 func termHandler(sig os.Signal) error {
     log.Println("Terminating...")
@@ -56,10 +31,16 @@ func printVersion() {
 
 func main() {
     version := flag.Bool("v", false, "print version")
+    path := flag.String("c", "/etc/moon/moon.cfg", "config file")
     signal := flag.String("s", "", `send signal to the daemon
         quit — graceful shutdown`)
     flag.Parse()
-    parseConfig()
+
+    if c, err := cfg.Parse(*path); err != nil {
+        log.Fatalf("Error: unable to parse %s, %v\n", path, err)
+    } else {
+        config = c
+    }
 
     if *version {
         printVersion()

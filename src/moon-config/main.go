@@ -1,42 +1,15 @@
 package main
 
 import (
-    "encoding/json"
     "flag"
     "fmt"
-    "io/ioutil"
 
-    "github.com/satori/go.uuid"
+    "moon/cfg"
 )
-
-var keyPath string = "/etc/moon/key.cfg"
-
-type Auth struct {
-    Key  string `json:"key"`
-    Uuid string `json:"uuid"`
-}
-
-func getAuth() *Auth {
-    bytes, err := ioutil.ReadFile(keyPath)
-    if err != nil {
-        return nil
-    }
-
-    auth := new(Auth)
-    err = json.Unmarshal(bytes, auth)
-    if err != nil {
-        return nil
-    }
-
-    return auth
-}
-
-func generateUuid() string {
-    return uuid.NewV4().String()
-}
 
 func main() {
     key := flag.String("key", "", "agent authentication key")
+    path := flag.String("conf", "/etc/moon/moon.cfg", "config file")
     flag.Parse()
 
     if len(*key) == 0 {
@@ -44,18 +17,14 @@ func main() {
         return
     }
 
-    auth := getAuth()
-    if auth != nil && auth.Key == *key {
+    c, err := cfg.Parse(*path)
+    if err != nil {
+        fmt.Printf("Error: unable to parse %s, %v\n", path, err)
         return
     }
 
-    auth = new(Auth)
-    auth.Key = *key
-    auth.Uuid = generateUuid()
-
-    content, _ := json.Marshal(auth)
-    if err := ioutil.WriteFile(keyPath, content, 0644); err != nil {
-        fmt.Printf("Error: write %s, %v\n", keyPath, err)
+    if err := cfg.ResetKey(c.KeyFile, *key); err != nil {
+        fmt.Printf("Error: unable to reset key, %v\n", err)
         return
     }
 }
