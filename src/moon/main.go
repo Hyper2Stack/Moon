@@ -2,31 +2,77 @@ package main
 
 import (
     "flag"
+    "fmt"
     "log"
     "os"
     "syscall"
 
     "github.com/sevlyar/go-daemon"
+    "github.com/shizeeg/gcfg"
 )
 
 var (
-    signal = flag.String("s", "", `send signal to the daemon
-        quit — graceful shutdown
-        stop — fast shutdown
-        reload — reloading the configuration file`)
+    interrupt = make(chan struct{})
+    done = make(chan struct{})
 )
 
+var config Config
+
+type Config struct {
+    PidFile string `gcfg:"pid_file"`
+    LogFile string `gcfg:"log_file"`
+}
+
+func parseConfig() {
+    cfg := struct {
+        Moon Config
+    }{}
+
+    err := gcfg.ReadFileInto(&cfg, "/etc/moon/moon.cfg")
+    if err != nil {
+        log.Fatalf("Failed to parse moon.cfg: %s", err)
+    }
+
+    config = cfg.Moon
+    if config.PidFile == "" {
+        config.PidFile = "/var/run/moon.pid"
+    }
+
+    if config.LogFile == "" {
+        config.LogFile = "/var/log/moon/moon.log"
+    }
+}
+
+func termHandler(sig os.Signal) error {
+    log.Println("Terminating...")
+    interrupt <- struct{}{}
+    <-done
+    return daemon.ErrStop
+}
+
+func printVersion() {
+    fmt.Println(version)
+}
+
 func main() {
+    version := flag.Bool("v", false, "print version")
+    signal := flag.String("s", "", `send signal to the daemon
+        quit — graceful shutdown`)
     flag.Parse()
+    parseConfig()
+
+    if *version {
+        printVersion()
+        return
+    }
+
     daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandler)
-    daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandler)
-    daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, reloadHandler)
 
     cntxt := &daemon.Context{
-        PidFileName: "/var/run/moon.pid",
+        PidFileName: config.PidFile,
         PidFilePerm: 0644,
-        LogFileName: "/var/log/moon/moon.log",
-        LogFilePerm: 0640,
+        LogFileName: config.LogFile,
+        LogFilePerm: 0644,
         WorkDir:     "/",
         Umask:       027,
         Args:        []string{"[/usr/sbin/moon]"},
@@ -37,7 +83,9 @@ func main() {
         if err != nil {
             log.Fatalln("Error: unable to send signal to the daemon,", err)
         }
-        daemon.SendCommands(d)
+        if d != nil {
+            daemon.SendCommands(d)
+        }
         return
     }
 
@@ -59,22 +107,4 @@ func main() {
         log.Println("Error: unable to serve signals,", err)
     }
     log.Println("Daemon terminated")
-}
-
-var (
-    interrupt = make(chan struct{})
-    done = make(chan struct{})
-)
-
-func termHandler(sig os.Signal) error {
-    log.Println("Terminating...")
-    interrupt <- struct{}{}
-    <-done
-    return daemon.ErrStop
-}
-
-func reloadHandler(sig os.Signal) error {
-    log.Println("Reloading...")
-    // TBD
-    return nil
 }
