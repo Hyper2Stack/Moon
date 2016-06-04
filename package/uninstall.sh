@@ -2,11 +2,14 @@
 
 user="$(id -un 2>/dev/null || true)"
 if [ "${user}" != "root" ]; then
-    echo "Need root permission to uninstall package"
+    echo "Should have root permission, good luck!"
     exit 1
 fi
 
-/usr/sbin/moon -s quit > /dev/null 2>&1
+service moon stop > /dev/null 2>&1
+update-rc.d -f moon remove > /dev/null 2>&1
+
+rm -rf /etc/init.d/moon
 
 rm -rf /etc/moon
 rm -rf /var/run/moon.pid

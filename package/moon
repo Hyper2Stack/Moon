@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+### BEGIN INIT INFO
+# Provides:          moon
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Should-Start:      $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start and stop the moon daemon
+# Description:       Start and stop the moon daemon
+### END INIT INFO
+#
+
+set -e
+
+PID_FILE=/var/run/moon.pid
+MOON=/usr/sbin/moon
+
+is_running() {
+  [ ! -f ${PID_FILE} ] && return 1
+  pid=`cat ${PID_FILE}`
+  [ "${pid}" != "" ] && [ -e /proc/${pid} ] && return 0
+  return 1
+}
+
+moon_start() {
+  if is_running; then
+    echo "Service moon is already running."
+    return 0
+  fi
+  echo "Starting service moon..."
+  ${MOON}
+}
+
+moon_stop() {
+  if ! is_running; then
+    return 0
+  fi
+  echo "Stopping service moon..."
+  ${MOON} -s quit
+}
+
+#
+# main
+#
+
+case "${1:-''}" in
+  'start')
+    moon_start
+  ;;
+
+  'stop')
+    moon_stop
+  ;;
+
+  'restart')
+    set +e; moon_stop; set -e
+    moon_start
+  ;;
+
+  'reload'|'force-reload')
+    echo "Not supported."
+    # TBD
+  ;;
+
+  'status')
+    if is_running; then
+      echo "Service moon is running."
+    else
+      echo "Service moon is stopped."
+    fi
+  ;;
+
+  *)
+    echo "Usage: service moon start|stop|restart|reload|force-reload|status"
+    exit 1
+  ;;
+esac

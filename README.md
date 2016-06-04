@@ -2,10 +2,15 @@
 
 ## build & install
     ./build.sh
-    sudo ./install.sh
+    sudo ./package/install.sh
+
+## uninstall
+    sudo ./package/uninstall.sh
+
+## make installer package
+    ./package/pkg.sh
 
 ## example
-    cd example
-    ./start.sh
-    ./test.sh
-    ./stop.sh
+    ./example/start.sh
+    ./example/test.sh
+    ./example/stop.sh

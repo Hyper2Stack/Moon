@@ -4,16 +4,20 @@ set -e
 
 user="$(id -un 2>/dev/null || true)"
 if [ "${user}" != "root" ]; then
-    echo "Need root permission to install package"
+    echo "Should have root permission, good luck!"
     exit 1
 fi
 
-ROOT_DIR=`dirname $0`
+ROOT_DIR=`dirname $0`/..
 
 mkdir -p /etc/moon
 mkdir -p /var/run/moon
 mkdir -p /var/log/moon
 
-install ${ROOT_DIR}/config/moon.cfg /etc/moon/moon.cfg
+install ${ROOT_DIR}/package/moon.cfg /etc/moon/moon.cfg
 install ${ROOT_DIR}/bin/moon /usr/sbin/moon
 install ${ROOT_DIR}/bin/moon-config /usr/sbin/moon-config
+
+install ${ROOT_DIR}/package/moon /etc/init.d/moon
+
+update-rc.d moon defaults > /dev/null

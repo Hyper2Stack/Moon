@@ -1,5 +1,5 @@
 #!/bin/bash
 
 sudo /usr/sbin/moon-config -key "abc"
-sudo /usr/sbin/moon
+sudo service moon start
 `dirname $0`/../bin/mock-server &
