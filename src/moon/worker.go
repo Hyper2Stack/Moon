@@ -7,31 +7,11 @@ import (
     "log"
     "net/http"
     "net/url"
-    "strings"
     "time"
 
     "github.com/gorilla/websocket"
+    "github.com/hyper2stack/mooncommon/protocol"
     "moon/cfg"
-)
-
-type Request struct {
-    Action  string
-    Content []byte
-}
-
-type Response struct {
-    Status  string
-    Content []byte
-}
-
-var (
-    ActionNodeInfo      = "get-node-info"
-    ActionAgentInfo     = "get-agent-info"
-    ActionExecShell     = "exec-shell-script"
-    StatusOK            = "ok"
-    StatusBadRequest    = "bad-request"
-    StatusError         = "error"
-    StatusInternalError = "internal-error"
 )
 
 var conn *websocket.Conn = nil
@@ -77,43 +57,76 @@ func dail(auth string) {
     }
 }
 
-func decodeRequest(msg []byte) *Request {
-    ss := strings.SplitN(string(msg), "\r\n", 2)
-    return &Request{Action: ss[0], Content: []byte(ss[1])}
-}
-
-func encodeResponse(res *Response) []byte {
-    return []byte(fmt.Sprintf("%s\r\n%s", res.Status, res.Content))
-}
-
-func process() {
+func readLoop() {
     <- connected
     for {
         _, msg, err := conn.ReadMessage()
         if err != nil {
             log.Printf("Error: read message, %v\n", err)
             conn.Close()
+            conn = nil
             reconnect <- struct{}{}
             <- connected
             continue
         }
 
-        req := decodeRequest(msg)
-        log.Printf("Recv message of action %s\n", req.Action)
+        go process(msg)
+    }
+}
 
-        res := new(Response)
-        job, err := createJob(req)
-        if err != nil {
-            res.Status = StatusBadRequest
-            res.Content, _ = json.Marshal(map[string]string{"message": err.Error()})
-            log.Printf("Error: create job, %v\n", err)
-        } else {
-            res = job.Run()
+func process(body []byte) {
+    msg, err := protocol.Decode(body)
+    if err != nil {
+        // ignore those messgaes can not be decoded
+        log.Printf("Error: decode messge, %v\n", err)
+        return
+    }
+
+    if msg.Type != protocol.Req {
+        // ignore thos messages are not REQ type
+        log.Printf("Error: type not supported, %s\n", msg.Type)
+        return
+    }
+
+    log.Printf("Recv request of method %s\n", msg.Method)
+
+    payload, err := handle(msg.Method, msg.Payload)
+    if err != nil {
+        log.Printf("Error: exec request, %v\n", err)
+        responseErr(msg.Uuid, protocol.StatusError, err)
+        return
+    }
+
+    response(msg.Uuid, protocol.StatusOK, payload)
+}
+
+func responseErr(uuid, status string, err error) {
+    payload, _ := json.Marshal(map[string]string{"error": err.Error()})
+    response(uuid, status, payload)
+}
+
+func response(uuid, status string, payload []byte) {
+    msg := new(protocol.Msg)
+    msg.Type = protocol.Res
+    msg.Uuid = uuid
+    msg.Method = status
+    msg.Payload = payload
+
+    body, err := protocol.Encode(msg)
+    if err != nil {
+        log.Printf("Error: encode messge, %v\n", err)
+        return
+    }
+
+    for {
+        if conn == nil {
+            time.Sleep(3 * time.Second)
+            continue
         }
-
-        if err := conn.WriteMessage(websocket.TextMessage, encodeResponse(res)); err != nil {
+        if err := conn.WriteMessage(websocket.TextMessage, body); err != nil {
             log.Printf("Error: write message, %v\n", err)
         }
+        break
     }
 }
 
@@ -124,7 +137,7 @@ func worker() {
     }
 
     go dail(auth)
-    go process()
+    go readLoop()
 
     <- interrupt
     // TBD
