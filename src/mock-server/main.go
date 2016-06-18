@@ -14,7 +14,9 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 var upgrader = websocket.Upgrader{}
 
 var conn *websocket.Conn
-var key string
+
+var clientKey string
+var clientVersion string
 
 var (
     disconnect = make(chan struct{})
@@ -28,7 +30,10 @@ func ws(w http.ResponseWriter, r *http.Request) {
     }
     defer c.Close()
 
-    key = r.Header.Get("Moon-Authentication")
+    clientKey = r.Header.Get("Moon-Authentication")
+    clientVersion = r.Header.Get("Moon-Version")
+
+    log.Println("Connected.")
     conn = c
     <- disconnect
 }
@@ -219,8 +224,8 @@ func checkCreateFile(status string, payload []byte) bool {
     return status == protocol.StatusOK
 }
 
-func getKey(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte(key))
+func clientInfo(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte(clientKey+"\n"+clientVersion+"\n"))
 }
 
 func done(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +236,7 @@ func main() {
     flag.Parse()
     http.HandleFunc("/api/v1/agent", ws)
     http.HandleFunc("/test", test)
-    http.HandleFunc("/key", getKey)
+    http.HandleFunc("/client", clientInfo)
     http.HandleFunc("/done", done)
     log.Fatal(http.ListenAndServe(*addr, nil))
 }

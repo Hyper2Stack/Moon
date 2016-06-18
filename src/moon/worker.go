@@ -32,9 +32,15 @@ func getAuth() (string, bool) {
 }
 
 func dail(auth string) {
-    u := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/api/v1/agent"}
+    scheme := "wss"
+    if config.Ssl != "on" {
+        scheme = "ws"
+    }
+
+    u := url.URL{Scheme: scheme, Host: config.Server, Path: "/api/v1/agent"}
     header := make(http.Header)
     header.Set("Moon-Authentication", auth)
+    header.Set("Moon-Version", version)
 
     for {
         log.Printf("Trying to connect %s\n", u.String())

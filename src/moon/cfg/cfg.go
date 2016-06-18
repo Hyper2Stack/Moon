@@ -12,6 +12,8 @@ type Cfg struct {
     PidFile string `gcfg:"pid_file"`
     LogFile string `gcfg:"log_file"`
     KeyFile string `gcfg:"key_file"`
+    Server  string `gcfg:"server"`
+    Ssl     string `gcfg:"ssl"`
 }
 
 type Auth struct {
@@ -38,6 +40,17 @@ func Parse(cfgPath string) (*Cfg, error) {
 
     if cfg.Moon.KeyFile == "" {
         cfg.Moon.KeyFile = "/etc/moon/key.json"
+    }
+
+    if cfg.Moon.Server == "" {
+        cfg.Moon.Server = "agent.moonlegend.cn"
+    }
+
+    if cfg.Moon.Ssl == "" {
+        cfg.Moon.Ssl = "on"
+    }
+    if cfg.Moon.Ssl != "on" {
+        cfg.Moon.Ssl = "off"
     }
 
     return &cfg.Moon, nil

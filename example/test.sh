@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "--- get key ---"
-curl -i http://localhost:8080/key
+echo "--- get client info ---"
+curl -i http://localhost:8080/client
 echo
 
 echo "--- test ---"

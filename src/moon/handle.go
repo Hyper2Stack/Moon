@@ -15,7 +15,7 @@ import (
     "github.com/hyper2stack/mooncommon/protocol"
 )
 
-var version = "0.1"
+var version = "1.0"
 
 func getAgentInfo() ([]byte, error) {
     info := new(protocol.Agent)
