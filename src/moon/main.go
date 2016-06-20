@@ -33,7 +33,7 @@ func main() {
     version := flag.Bool("v", false, "print version")
     path := flag.String("c", "/etc/moon/moon.cfg", "config file")
     signal := flag.String("s", "", `send signal to the daemon
-        quit — graceful shutdown`)
+        quit - graceful shutdown`)
     flag.Parse()
 
     if c, err := cfg.Parse(*path); err != nil {

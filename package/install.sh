@@ -20,4 +20,12 @@ install ${ROOT_DIR}/bin/moon-config /usr/sbin/moon-config
 
 install ${ROOT_DIR}/package/moon /etc/init.d/moon
 
-update-rc.d moon defaults > /dev/null
+# TODO: for OSX??
+if [ -f /etc/debian_version ]; then
+    update-rc.d moon defaults > /dev/null
+elif [ -f /etc/redhat-release ]; then
+    chkconfig --add moon
+    chkconfig moon on
+else
+    echo "Unknown distribution, service auto startup not enabled!"
+fi
