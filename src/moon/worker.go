@@ -7,6 +7,7 @@ import (
     "log"
     "net/http"
     "net/url"
+    "sync"
     "time"
 
     "github.com/gorilla/websocket"
@@ -15,6 +16,7 @@ import (
 )
 
 var conn *websocket.Conn = nil
+var lock *sync.Mutex = new(sync.Mutex)
 
 var (
     reconnect = make(chan struct{})
@@ -125,14 +127,17 @@ func response(uuid, status string, payload []byte) {
     }
 
     for {
-        if conn == nil {
-            time.Sleep(3 * time.Second)
-            continue
+        if conn != nil {
+            break
         }
-        if err := conn.WriteMessage(websocket.TextMessage, body); err != nil {
-            log.Printf("Error: write message, %v\n", err)
-        }
-        break
+        time.Sleep(3 * time.Second)
+    }
+
+    lock.Lock()
+    defer lock.Unlock()
+
+    if err := conn.WriteMessage(websocket.TextMessage, body); err != nil {
+        log.Printf("Error: write message, %v\n", err)
     }
 }
 
